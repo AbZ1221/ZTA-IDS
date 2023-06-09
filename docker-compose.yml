@@ -1,0 +1,43 @@
+version: "3"
+
+networks:
+  gitea:
+    external: false
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet:  10.103.0.1/16
+
+
+services:
+  server:
+    image: gitea:latest
+    container_name: gitea
+    user: git
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+    restart: always
+    networks:
+      - gitea
+    volumes: # - ./gitea:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "80:80"
+    command: "/gitea/gitea web -port 80"
+        
+  kali:
+    image: kalilinux/kali-rolling:latest
+    container_name: kalilinux
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+    restart: always
+    networks:
+      - gitea
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    command: "tail -f /dev/null"
