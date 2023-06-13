@@ -31,11 +31,11 @@ TAGS="bindata sqlite sqlite_unlock_notify" make build
 chmod 777 -R /gitea
 useradd -ms /bin/bash git
 ```
-, open another terminal in host and copy ssh config file from host to docker container by `docker cp sshd_config gitea:/` and inside the docker container move it to the ssh config path using `mv /sshd_config /etc/ssh/`.
+, open another terminal in host and copy ssh config file from host to docker container by `docker cp sshd_config ubuntu:/` and inside the docker container move it to the ssh config path using `mv /sshd_config /etc/ssh/`.
 
 Open another terminal in host, and use this command to save the changes:
 ```bash
-git commit ubuntu gitea
+docker commit ubuntu gitea
 ```
 Now, we have a new docker image named gitea:latest which our required modules are installed in.
 
