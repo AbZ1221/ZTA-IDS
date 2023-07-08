@@ -63,12 +63,35 @@ Now we can open the gitea web page in browser with address of our host.
 ### Run ssh servise in server docker
 We should run ssh-server service in server by hand. Let's get into the docker container by `docker exec -it gitea bash` and run ssh service using `/etc/init.d/ssh restart`. Finally, run tcpdump based on the network device and desired filename, `tcpdump -i netdevice -w filename.pcap`.
 
-## Rub Clients
+## Run Clients
 *The client docker image is built by the IP address of server after docker-compose up command*
 
 We can run this command as many times as we want to have different client IP address in the range of server IP address:
 ```bash
 docker run --rm -it -u root --network root_gitea --name client1 client:latest
+```
+
+## Install and Run firewall on host
+Install and active firewall to protect the host being attacked on other ports than are desired and under evaluation.
+Install firewall on ubuntu host and run it as a service:
+```bash
+apt install firewalld
+systemctl enable firewalld --now
+```
+
+Here, since 22 and 80 are used as docker forward ports, they should be open and under evaluation:
+```bash
+firewall-cmd --permanent --add-port=22/udp
+firewall-cmd --permanent --add-port=22/tcp
+firewall-cmd --permanent --add-port=80/udp
+firewall-cmd --permanent --add-port=80/tcp
+systemctl restart firewalld
+firewall-cmd --runtime-to-permanent
+```
+
+The open ports can be listed using:
+```bash
+firewall-cmd --list-ports
 ```
 
 # Multi-View
