@@ -96,3 +96,19 @@ firewall-cmd --list-ports
 
 # Multi-View
 
+
+# Intrusion Detection System (IDS)
+The IDS methods are implemented in "IDS" directory for all binary, 6 and 10 categorical classifiers. The file `AE.py` is implementation of AE in "IDS" which trains the AE and saves the checkpoint for later usages.
+
+## Dataset
+We have implemented and tested our proposed method on UNSW-NB15 dataset which is freely available on the internet and can be downloaded using `download.sh` bash code.
+
+## pre-process
+The dataset should be pre-processed to be fed into IDS. The pre-processing steps include loading data, converting non-numerical values to numerics using one-hot encoding, and normalizing. The code `preprocess.py` applies preprocessing which is imported in each neural network structure.
+
+## IDS Models
+The implemeted IDS models include:
+- `CNN_AE.py`: CNN IDS model using AE extracted features as input.
+- `CNNAtt_AE.py`: CNN-attention based IDS model using AE extracted features as input.
+- `CNNAtt-balanced.py`: CNN-attention based IDS model using AE extracted features as input with balanced sampling of data for training.
+- `CNNAttLstm_AE.py`: CNN-LSTM IDS model based on attention module using AE extracted features as input.
