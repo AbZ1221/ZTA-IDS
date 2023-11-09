@@ -30,17 +30,17 @@ class autoencoder(nn.Module):
         return x1, None
 
 model = autoencoder()
+state_dict = torch.load('encoder_weights.pth', map_location=torch.device('cpu'))
+model.load_state_dict(state_dict)
+model.cpu()
 
 
-#Prepare data loaders
+model.eval()
+
 X_test = normalized_df.to_numpy(dtype='float')[test_cnt:,:]
-X_train = normalized_df.to_numpy(dtype='float')[:test_cnt),:]
+X_train = normalized_df.to_numpy(dtype='float')[:test_cnt,:]
 y_test = full_targ_data.values[len(test_cnt):]
 y_train = full_targ_data.values[:len(test_cnt)]
-
-# from imblearn.over_sampling import SMOTE
-# smote = SMOTE(random_state=42)
-# X_resampled, y_resampled = smote.fit_resample(X_train, y_train)
 
 label_list = [item for item in list(y_train.tolist())]
 label_names = list(set(label_list))
@@ -58,6 +58,39 @@ Xy_test = np.concatenate((X_test, label_test), axis = 1)
 batch_size = 32
 train_loader = torch.utils.data.DataLoader(torch.from_numpy(Xy_train).float(), batch_size=batch_size, num_workers=2, shuffle=False)
 test_loader = torch.utils.data.DataLoader(torch.from_numpy(Xy_test).float(), batch_size=batch_size, num_workers=2, shuffle=False)
+
+
+mapped_feats = []
+with torch.no_grad():
+    for x in train_loader:
+        x_ = x[:, :-1]
+        y_ = x[:, -1]
+        if torch.cuda.is_available():
+            x_ = x_.cuda()
+
+        # get output from the model, given the inputs
+        feats, _ = model(x_)
+        mapped_feats.append(torch.cat((feats.cpu(), y_.unsqueeze(1)), dim = 1))
+
+training_feats_targ = torch.cat(mapped_feats, dim = 0)
+
+mepped_feats = []
+with torch.no_grad():
+    for x in test_loader:
+        x_ = x[:, :-1]
+        y_ = x[:, -1]
+        if torch.cuda.is_available():
+            x_ = x_.cuda()
+
+        # get output from the model, given the inputs
+        feats, _ = model(x_)
+        mepped_feats.append(torch.cat((feats.cpu(), y_.unsqueeze(1)), dim = 1))
+
+testing_feats_targ = torch.cat(mepped_feats, dim = 0)
+
+
+#Prepare data loaders
+
 
 class Net(nn.Module):
     def __init__(self):
@@ -96,6 +129,9 @@ criterion = torch.nn.CrossEntropyLoss() # Train classifier
 #optimizer = torch.optim.SGD(model.parameters(), lr=learningRate, weight_decay=5e-3, momentum=0.9)
 optimizer = torch.optim.Adam(net.parameters(), lr=learningRate)
 
+batch_size = 32
+train_loader = torch.utils.data.DataLoader(training_feats_targ, batch_size=batch_size, num_workers=2, shuffle=True)
+test_loader = torch.utils.data.DataLoader(testing_feats_targ, batch_size=128, num_workers=2, shuffle=False)
 
 maxcor = 0
 epochs = 300
@@ -106,52 +142,52 @@ if torch.cuda.is_available():
 
 net.train()
 for epoch in range(epochs):
-  total_loss = []
-  net.train()
-  for x in tqdm(train_loader):
-    x_ = x[:, :-1]
-    y_ = x[:, -1].long()
-    if torch.cuda.is_available():
-       x_ = x_.cuda()
-       y_ = y_.cuda()
+    total_loss = []
+    net.train()
+    for x in tqdm(train_loader):
+        x_ = x[:, :-1]
+        y_ = x[:, -1].long()
+        if torch.cuda.is_available():
+            x_ = x_.cuda()
+            y_ = y_.cuda()
 
-    # Clear gradient buffers because we don't want any gradient from previous epoch to carry forward, dont want to cummulate gradients
-    optimizer.zero_grad()
+        # Clear gradient buffers because we don't want any gradient from previous epoch to carry forward, dont want to cummulate gradients
+        optimizer.zero_grad()
 
-    # get output from the model, given the inputs
-    _, outputs = net(x_.unsqueeze(1))
+        # get output from the model, given the inputs
+        _, outputs = net(x_.unsqueeze(1))
 
-    # get loss for the predicted output
-    loss = criterion(outputs, y_)
-    # get gradients w.r.t to parameters
-    loss.backward()
-    torch.nn.utils.clip_grad_norm_(net.parameters(), 1)
-    # update parameters
-    optimizer.step()
-  net.eval()
-  total = 0
-  correct = 0
-  with torch.no_grad():
-    for x in test_loader:
-      x_ = x[:, :-1]
-      y_ = x[:, -1].long()
-      if torch.cuda.is_available():
-          x_ = x_.cuda()
-          y_ = y_.cuda()
+        # get loss for the predicted output
+        loss = criterion(outputs, y_)
+        # get gradients w.r.t to parameters
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(net.parameters(), 1)
+        # update parameters
+        optimizer.step()
+    net.eval()
+    total = 0
+    correct = 0
+    with torch.no_grad():
+        for x in test_loader:
+            x_ = x[:, :-1]
+            y_ = x[:, -1].long()
+            if torch.cuda.is_available():
+                x_ = x_.cuda()
+                y_ = y_.cuda()
 
-      # get output from the model, given the inputs
-      _, outputs = net(x_.unsqueeze(1))
+            # get output from the model, given the inputs
+            _, outputs = net(x_.unsqueeze(1))
 
-      # get loss for the predicted output
-      loss = criterion(outputs, y_)
-      total_loss += [loss.item()]
-      _, predicted = torch.max(outputs.data, 1) # arg_max(output)
-      total += y_.size(0)
-      correct += (predicted == y_).sum().item()
-  if correct > maxcor:
-    maxcor = correct
-    torch.save(net.state_dict(), 'cnn_weights.pth')
-    
-  print('Accuracy of the network on test traces: %2.2f %%' % (
-    100 * correct / total))
-  print('epoch {}, loss {}'.format(epoch, np.average(total_loss)))
+            # get loss for the predicted output
+            loss = criterion(outputs, y_)
+            total_loss += [loss.item()]
+            _, predicted = torch.max(outputs.data, 1) # arg_max(output)
+            total += y_.size(0)
+            correct += (predicted == y_).sum().item()
+    if correct > maxcor:
+        maxcor = correct
+        torch.save(net.state_dict(), 'cnn_weights.pth')
+
+    print('Accuracy of the network on test traces: %2.2f %%' % (
+        100 * correct / total))
+    print('epoch {}, loss {}'.format(epoch, np.average(total_loss)))
