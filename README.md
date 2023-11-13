@@ -95,7 +95,16 @@ firewall-cmd --list-ports
 ```
 
 # Multi-View
+The implementation of the modified multi-view is available on `MV` directory in `mv.py` file.
+## Reqirements
+Install pycrypto before start runing using:
 
+`pip install pycrypto`
+
+## Run MV
+Place the UNSW-NB15 csv files into the same directory or change the addresses in mv.py file according to the location of csv files. Then run MV by:
+
+`python3 mv.py`
 
 # Intrusion Detection System (IDS)
 The IDS methods are implemented in "IDS" directory for all binary, 6 and 10 categorical classifiers. The file `AE.py` is implementation of AE in "IDS" which trains the AE and saves the checkpoint for later usages.
